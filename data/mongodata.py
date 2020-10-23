@@ -8,7 +8,7 @@ from pymongo.collection import Collection
 from pymongo.cursor import Cursor
 
 from config import get_config
-from data import Data
+from data.data import Data
 
 _config = get_config()
 

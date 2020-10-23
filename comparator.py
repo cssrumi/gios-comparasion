@@ -3,9 +3,9 @@ from typing import List
 
 import matplotlib.pyplot as plt
 
-from data import DataComparison
-from mongodata import InstallationQuery as MQuery
-from pgdata import InstallationQuery as PGQuery
+from data.data import DataComparison
+from data.mongodata import InstallationQuery as MQuery
+from data.pgdata import InstallationQuery as PGQuery
 
 
 class Comparator:

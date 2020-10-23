@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List, Iterable, Sized, Union, Generator
+from typing import Optional, List, Iterable, Generator
 
 import postgresql.driver as pg_driver
 import pytz
@@ -8,7 +8,7 @@ from postgresql.driver.pq3 import Statement
 from postgresql.types import Row
 
 from config import get_config
-from data import Data
+from data.data import Data
 
 _config = get_config()
 
@@ -16,7 +16,7 @@ _config = get_config()
 class InstallationQuery:
     def __init__(self):
         self._db: Connection = None
-        self._comparable_installations_query: Statement = None
+        self._installations_query: Statement = None
 
     def __enter__(self):
         self._db = pg_driver.connect(
@@ -26,21 +26,21 @@ class InstallationQuery:
             port=_config.pgPort,
             database=_config.pgDB
         )
-        self._comparable_installations_query = self._db.prepare("SELECT * FROM GIOS.ALL_COMPARABLE_INSTALLATIONS "
-                                                                "WHERE STATION = $1 AND TIMESTAMP = $2")
-        self._comparable_installations_batch = self._db.prepare("SELECT * FROM GIOS.ALL_COMPARABLE_INSTALLATIONS "
-                                                                "WHERE STATION = $1 AND TIMESTAMP = ANY($2)")
+        self._installations_query = self._db.prepare("SELECT * FROM GIOS.ALL_COMPARABLE_INSTALLATIONS "
+                                                     "WHERE STATION = $1 AND TIMESTAMP = $2")
+        self._installations_batch = self._db.prepare("SELECT * FROM GIOS.ALL_COMPARABLE_INSTALLATIONS "
+                                                     "WHERE STATION = $1 AND TIMESTAMP = ANY($2)")
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._comparable_installations_query.close()
-        self._comparable_installations_batch.close()
+        self._installations_query.close()
+        self._installations_batch.close()
         self._db.close()
 
     def find_first(self, station: str, timestamp: datetime) -> Optional[Data]:
-        if not self._comparable_installations_query:
+        if not self._installations_query:
             raise RuntimeError("This function is accessible only from context manager")
-        result = self._comparable_installations_query.first(station, timestamp.astimezone(pytz.UTC))
+        result = self._installations_query.first(station, timestamp.astimezone(pytz.UTC))
         return InstallationQuery.deserialize(result)
 
     def find_in_batch(self, station: str, timestamps: Iterable[datetime], chunk_size=500) -> List[Data]:
@@ -48,7 +48,7 @@ class InstallationQuery:
             raise RuntimeError("This function is accessible only from context manager")
         result = []
         for chunk in InstallationQuery._chunks(timestamps, chunk_size):
-            rows = self._comparable_installations_batch.rows(station, set(chunk))
+            rows = self._installations_batch.rows(station, set(chunk))
             result.extend((InstallationQuery.deserialize(row) for row in rows if row))
         return result
 
