@@ -9,7 +9,6 @@ from pymongo.cursor import Cursor
 
 from config import get_config
 from data import Data
-from timer import timer
 
 _config = get_config()
 
@@ -30,7 +29,6 @@ class InstallationQuery:
         self._collection = None
         self._client = None
 
-    @timer
     def find(self, station: str, from_datetime: datetime, to_datetime: datetime) -> List[Data]:
         if not self._client:
             raise RuntimeError("This function is accessible only from context manager")

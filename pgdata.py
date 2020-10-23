@@ -9,7 +9,6 @@ from postgresql.types import Row
 
 from config import get_config
 from data import Data
-from timer import timer
 
 _config = get_config()
 
@@ -38,14 +37,12 @@ class InstallationQuery:
         self._comparable_installations_batch.close()
         self._db.close()
 
-    @timer
     def find_first(self, station: str, timestamp: datetime) -> Optional[Data]:
         if not self._comparable_installations_query:
             raise RuntimeError("This function is accessible only from context manager")
         result = self._comparable_installations_query.first(station, timestamp.astimezone(pytz.UTC))
         return InstallationQuery.deserialize(result)
 
-    @timer
     def find_in_batch(self, station: str, timestamps: Iterable[datetime], chunk_size=500) -> List[Data]:
         if self._db.closed:
             raise RuntimeError("This function is accessible only from context manager")
@@ -65,6 +62,6 @@ class InstallationQuery:
         return Data(station=station, timestamp=timestamp, value=value)
 
     @staticmethod
-    def _chunks(iterable: Union[Iterable, Sized], chunk_size: int) -> Generator:
+    def _chunks(sliceable, chunk_size: int) -> Generator:
         chunk_size = max(1, chunk_size)
-        return (iterable[i:i + chunk_size] for i in range(0, len(iterable), chunk_size))
+        return (sliceable[i:i + chunk_size] for i in range(0, len(sliceable), chunk_size))
