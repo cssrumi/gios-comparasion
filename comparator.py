@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import List
 
 import matplotlib.pyplot as plt
-from frozenlist import FrozenList
 
 from data import DataComparison
 from mongodata import InstallationQuery as MQuery
@@ -14,9 +13,9 @@ class Comparator:
         self._station = station
         self._from_dt = from_dt
         self._to_dt = to_dt
-        self._comparison: FrozenList[DataComparison] = None
+        self._comparison: List[DataComparison] = None
 
-    def compare(self) -> List[DataComparison]:
+    def compare(self) -> 'Comparator':
         with MQuery() as mq:
             m_data_list = mq.find(self._station, self._from_dt, self._to_dt)
 
@@ -28,10 +27,10 @@ class Comparator:
 
         comp = (DataComparison(timestamp=key, pg_value=pg_data[key].value, mongo_value=m_data[key].value)
                 for key in pg_data.keys())
-        self._comparison = FrozenList(sorted(comp, key=lambda c: c.timestamp))
-        return self._comparison
+        self._comparison = list(sorted(comp, key=lambda c: c.timestamp))
+        return self
 
-    def plot(self):
+    def plot(self) -> 'Comparator':
         plt.plot(
             range(len(self._comparison)),
             [c.mongo_value - c.pg_value
@@ -40,3 +39,7 @@ class Comparator:
         plt.ylabel('delta')
         plt.xlabel('pomiar')
         plt.show()
+        return self
+
+    def data(self) -> List[DataComparison]:
+        return self._comparison.copy()

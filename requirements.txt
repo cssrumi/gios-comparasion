@@ -3,4 +3,4 @@ attrs
 isodate
 pymongo
 matplotlib
-frozenlist
+pytz

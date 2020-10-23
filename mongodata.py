@@ -35,10 +35,10 @@ class InstallationQuery:
         from_dtf = from_datetime.strftime(self._query_ts_format)
         to_dtf = to_datetime.strftime(self._query_ts_format)
         result: Cursor = self._collection.find({'Params': station,
-                                        'Dates': {
-                                            '$gte': from_dtf,
-                                            '$lt': to_dtf
-                                        }})
+                                                'Dates': {
+                                                    '$gte': from_dtf,
+                                                    '$lt': to_dtf
+                                                }})
         return [data
                 for doc in result
                 for data in self.deserialize_doc(doc)]
@@ -52,8 +52,7 @@ class InstallationQuery:
         station = doc['Params'][0]
         deserialized = []
         for i, date in enumerate(doc['Dates']):
-            timestamp = datetime.strptime(date, self._query_ts_format).astimezone(pytz.timezone('POLAND'))
-            timestamp = timestamp - timedelta(hours=1)
+            timestamp = pytz.UTC.localize(datetime.strptime(date, self._query_ts_format)) - timedelta(hours=2)
             try:
                 value = doc['Data'][i]['value']
                 deserialized.append(Data(station=station, timestamp=timestamp, value=value))

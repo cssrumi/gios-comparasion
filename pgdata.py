@@ -37,14 +37,13 @@ class InstallationQuery:
     def find_first(self, station: str, timestamp: datetime) -> Optional[Data]:
         if not self._comparable_installations_query:
             raise RuntimeError("This function is accessible only from context manager")
-        result = self._comparable_installations_query.first(station, timestamp)
+        result = self._comparable_installations_query.first(station, timestamp.astimezone(pytz.UTC))
         return InstallationQuery.deserialize(result)
 
     @staticmethod
     def deserialize(result: Row) -> Optional[Data]:
         if result:
             station = result['station']
-            timestamp: datetime = result['timestamp']
-            timestamp = timestamp.astimezone(pytz.timezone('POLAND'))
+            timestamp: datetime = result['timestamp'].astimezone(pytz.UTC)
             value = float(result['value'])
             return Data(station=station, timestamp=timestamp, value=value)
