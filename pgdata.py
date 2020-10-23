@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, Iterable, Sized, Union, Generator
 
 import postgresql.driver as pg_driver
 import pytz
@@ -14,7 +14,7 @@ _config = get_config()
 
 
 class InstallationQuery:
-    def __init__(self) -> 'InstallationQuery':
+    def __init__(self):
         self._db: Connection = None
         self._comparable_installations_query: Statement = None
 
@@ -28,10 +28,13 @@ class InstallationQuery:
         )
         self._comparable_installations_query = self._db.prepare("SELECT * FROM GIOS.ALL_COMPARABLE_INSTALLATIONS "
                                                                 "WHERE STATION = $1 AND TIMESTAMP = $2")
+        self._comparable_installations_batch = self._db.prepare("SELECT * FROM GIOS.ALL_COMPARABLE_INSTALLATIONS "
+                                                                "WHERE STATION = $1 AND TIMESTAMP = ANY($2)")
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._comparable_installations_query.close()
+        self._comparable_installations_batch.close()
         self._db.close()
 
     def find_first(self, station: str, timestamp: datetime) -> Optional[Data]:
@@ -40,10 +43,25 @@ class InstallationQuery:
         result = self._comparable_installations_query.first(station, timestamp.astimezone(pytz.UTC))
         return InstallationQuery.deserialize(result)
 
+    def find_in_batch(self, station: str, timestamps: Iterable[datetime], chunk_size=500) -> List[Data]:
+        if self._db.closed:
+            raise RuntimeError("This function is accessible only from context manager")
+        result = []
+        for chunk in InstallationQuery._chunks(timestamps, chunk_size):
+            rows = self._comparable_installations_batch.rows(station, set(chunk))
+            result.extend((InstallationQuery.deserialize(row) for row in rows if row))
+        return result
+
     @staticmethod
     def deserialize(result: Row) -> Optional[Data]:
-        if result:
-            station = result['station']
-            timestamp: datetime = result['timestamp'].astimezone(pytz.UTC)
-            value = float(result['value'])
-            return Data(station=station, timestamp=timestamp, value=value)
+        if not result:
+            return
+        station = result['station']
+        timestamp: datetime = result['timestamp'].astimezone(pytz.UTC)
+        value = float(result['value'])
+        return Data(station=station, timestamp=timestamp, value=value)
+
+    @staticmethod
+    def _chunks(iterable: Union[Iterable, Sized], chunk_size: int) -> Generator:
+        chunk_size = max(1, chunk_size)
+        return (iterable[i:i + chunk_size] for i in range(0, len(iterable), chunk_size))

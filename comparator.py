@@ -18,9 +18,12 @@ class Comparator:
     def compare(self) -> 'Comparator':
         with MQuery() as mq:
             m_data_list = mq.find(self._station, self._from_dt, self._to_dt)
+            print("Records from Mongo count:", len(m_data_list))
 
         with PGQuery() as pgq:
-            pg_data_list = [pgq.find_first(self._station, d.timestamp) for d in m_data_list]
+            # pg_data_list = [pgq.find_first(self._station, d.timestamp) for d in m_data_list]
+            pg_data_list = pgq.find_in_batch(self._station, [d.timestamp for d in m_data_list])
+            print("Records from Postgres count:", len(pg_data_list))
 
         pg_data = {d.timestamp: d for d in pg_data_list if d}
         m_data = {d.timestamp: d for d in m_data_list if d.timestamp in pg_data.keys()}
